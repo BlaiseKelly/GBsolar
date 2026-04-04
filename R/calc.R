@@ -44,7 +44,7 @@ calc_pv_potential = function(tilted_wm2,meteo_dat){
   # combined incident irraditaion with cell efficiency
   yield_W_m2 = tilted_wm2*eta_T 
   # each grid cell is 1m2
-  yield_kWh = yield_W_m2/1000
+  yield_kWh_m2 = yield_W_m2/1000
   
-  return(yield_kWh)
+  return(yield_kWh_m2)
 }
