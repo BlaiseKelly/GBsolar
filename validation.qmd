@@ -1,0 +1,13 @@
+---
+title: "Model validation"
+---
+
+<!-- TODO: replace with the real shinyapps.io URL after first deployment -->
+```{r, echo = FALSE}
+
+obs_mod = readRDS("sites/Winsley/OUT/obs_mod.RDS")
+
+threadr::time_dygraph(obs_mod, c("obs_kwh", "modelled_kwh_shade"))
+
+```
+

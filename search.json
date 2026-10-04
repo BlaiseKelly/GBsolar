@@ -1,0 +1,58 @@
+[
+  {
+    "objectID": "app.html",
+    "href": "app.html",
+    "title": "Live app",
+    "section": "",
+    "text": "The interactive app is hosted on shinyapps.io. It loads the precomputed DSM, shading map and ERA5 meteorology from its bundled cache, so pressing Run calculation recomputes yield for all seven surfaces in seconds.\nChange the panel count, mounting height, aspect or slope for any surface and re-run to see the effect on annual, monthly and diurnal yield. Note that changing a height requires re-simulating the shading map, which is slower.\n\n\n\n\n\n\nIf the embedded frame does not load, open the app directly."
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "GBsolar",
+    "section": "",
+    "text": "A spin-off of GB DEM to create a national solar map, GBsolar estimates rooftop photovoltaic yield for specific sites by combining:"
+  },
+  {
+    "objectID": "index.html#the-bunbury-site",
+    "href": "index.html#the-bunbury-site",
+    "title": "GBsolar",
+    "section": "The Bunbury site",
+    "text": "The Bunbury site\nSeven roof surfaces at Bunbury (53.114°N, −2.646°E) are assessed, totalling 63 panels. All the expensive inputs — the LiDAR DSM, terrain derivatives, monthly shading maps and the ERA5 time series — are precomputed once, so the interactive app recalculates yield for every surface in seconds when you change panel counts or orientation.\n\n\n\nSurfaces assessed\n7 (63 panels)\n\n\nTotal estimated yield\n~9,300 kWh/year (5-yr mean)\n\n\nShading\nLiDAR DSM, monthly shadow maps\n\n\nMeteorology\nERA5 single-levels + ERA5-Land"
+  },
+  {
+    "objectID": "index.html#explore",
+    "href": "index.html#explore",
+    "title": "GBsolar",
+    "section": "Explore",
+    "text": "Explore\n\nAnalysis — annual, monthly and diurnal yield per surface, computed from the precomputed cache.\nLive app — the interactive Shiny app hosted on shinyapps.io: change panel counts, height, aspect and slope per surface and re-run the model."
+  },
+  {
+    "objectID": "analysis.html",
+    "href": "analysis.html",
+    "title": "Analysis",
+    "section": "",
+    "text": "annual &lt;- all_banks |&gt;\n  mutate(year = year(date)) |&gt;\n  group_by(bank, year) |&gt;\n  summarise(kwh = round(sum(kwh_bank, na.rm = TRUE)), .groups = \"drop\") |&gt;\n  tidyr::pivot_wider(names_from = year, values_from = kwh) |&gt;\n  mutate(Mean = round(rowMeans(across(where(is.numeric)), na.rm = TRUE)))\n\nknitr::kable(annual, col.names = c(\"Surface\", names(annual)[-1]))\n\n\n\n\nSurface\n2021\n2022\n2023\n2024\n2025\nMean\n\n\n\n\n01\n4630\n4620\n4581\n4404\n4704\n4588\n\n\n02\n676\n680\n666\n640\n692\n671\n\n\n03\n442\n449\n436\n408\n468\n441\n\n\n04\n587\n581\n566\n565\n571\n574\n\n\n05\n290\n289\n284\n270\n299\n286\n\n\n06\n1626\n1618\n1586\n1577\n1587\n1599\n\n\n07\n1154\n1164\n1128\n1069\n1210\n1145\n\n\n\n\n\nTotal estimated yield averages 9,304 kWh/year across all surfaces."
+  },
+  {
+    "objectID": "analysis.html#annual-yield-by-surface",
+    "href": "analysis.html#annual-yield-by-surface",
+    "title": "Analysis",
+    "section": "",
+    "text": "annual &lt;- all_banks |&gt;\n  mutate(year = year(date)) |&gt;\n  group_by(bank, year) |&gt;\n  summarise(kwh = round(sum(kwh_bank, na.rm = TRUE)), .groups = \"drop\") |&gt;\n  tidyr::pivot_wider(names_from = year, values_from = kwh) |&gt;\n  mutate(Mean = round(rowMeans(across(where(is.numeric)), na.rm = TRUE)))\n\nknitr::kable(annual, col.names = c(\"Surface\", names(annual)[-1]))\n\n\n\n\nSurface\n2021\n2022\n2023\n2024\n2025\nMean\n\n\n\n\n01\n4630\n4620\n4581\n4404\n4704\n4588\n\n\n02\n676\n680\n666\n640\n692\n671\n\n\n03\n442\n449\n436\n408\n468\n441\n\n\n04\n587\n581\n566\n565\n571\n574\n\n\n05\n290\n289\n284\n270\n299\n286\n\n\n06\n1626\n1618\n1586\n1577\n1587\n1599\n\n\n07\n1154\n1164\n1128\n1069\n1210\n1145\n\n\n\n\n\nTotal estimated yield averages 9,304 kWh/year across all surfaces."
+  },
+  {
+    "objectID": "analysis.html#yield-profiles",
+    "href": "analysis.html#yield-profiles",
+    "title": "Analysis",
+    "section": "Yield profiles",
+    "text": "Yield profiles\n\nPAL &lt;- c(\"#f97316\",\"#3b82f6\",\"#10b981\",\"#a855f7\",\"#ec4899\",\"#eab308\",\"#06b6d4\")\n\np_hour &lt;- all_banks |&gt;\n  mutate(hour = hour(date)) |&gt;\n  group_by(hour, bank) |&gt;\n  summarise(kwh = mean(kwh_bank, na.rm = TRUE), .groups = \"drop\") |&gt;\n  ggplot(aes(hour, kwh, colour = bank)) +\n  geom_line(linewidth = 0.9) +\n  geom_point(size = 1.4) +\n  scale_colour_manual(values = PAL, name = \"Surface\") +\n  scale_x_continuous(breaks = seq(0, 23, 3)) +\n  labs(title = \"Mean diurnal profile\", x = \"Hour of day\", y = \"kWh/hr\")\n\np_month &lt;- all_banks |&gt;\n  mutate(month = floor_date(date, \"month\")) |&gt;\n  group_by(month, bank) |&gt;\n  summarise(kwh = sum(kwh_bank, na.rm = TRUE), .groups = \"drop\") |&gt;\n  ggplot(aes(month, kwh, fill = bank)) +\n  geom_col(width = 25 * 24 * 3600) +\n  scale_fill_manual(values = PAL, name = \"Surface\") +\n  labs(title = \"Monthly yield by surface\", x = NULL, y = \"kWh\") +\n  theme(axis.text.x = element_text(angle = 30, hjust = 1))\n\np_annual &lt;- all_banks |&gt;\n  mutate(year = year(date)) |&gt;\n  group_by(year, bank) |&gt;\n  summarise(kwh = sum(kwh_bank, na.rm = TRUE), .groups = \"drop\") |&gt;\n  ggplot(aes(factor(year), kwh, fill = bank)) +\n  geom_col(position = \"dodge\") +\n  scale_fill_manual(values = PAL, name = \"Surface\") +\n  labs(title = \"Annual yield by surface\", x = NULL, y = \"kWh\")\n\np_hour / p_month / p_annual"
+  },
+  {
+    "objectID": "analysis.html#method",
+    "href": "analysis.html#method",
+    "title": "Analysis",
+    "section": "Method",
+    "text": "Method\nDirect radiation is attenuated by the LiDAR-derived shading fraction per month and hour, then combined with isotropic diffuse and ground-reflected radiation on the tilted plane. Cell temperature derating follows the NOCT model; panel area and efficiency defaults are 1.6 m² and 15.3%. Surfaces without a user-specified aspect or slope take their values from the DSM terrain derivatives at the surface point."
+  }
+]
