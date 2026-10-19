@@ -18,7 +18,7 @@ execute:
   message: false
 ---
 
-```{r setup}
+```{r, error=FALSE,echo=FALSE,warning=FALSE}
 library(ecmwfr)
 library(dplyr)
 library(sf)
@@ -69,7 +69,7 @@ without a recorded aspect and slope have these values extracted directly from th
 LiDAR-derived terrain model at the centroid location. Panel counts reflect the
 estimated maximum capacity of each surface.
 
-```{r error=FALSE,echo=FALSE,warning=FALSE}
+```{r, error=FALSE,echo=FALSE,warning=FALSE}
 systemz |>
   select(
     `Surface` = name,
@@ -139,7 +139,7 @@ aggregated to monthly and annual totals for reporting.
 
 ## Data preparation
 
-```{r error=FALSE,echo=FALSE,warning=FALSE}
+```{r, error=FALSE,echo=FALSE,warning=FALSE}
 local_domain = nexurbr::create_domain_polygon(
   latitude  = lat,
   longitude = lon,
@@ -147,7 +147,7 @@ local_domain = nexurbr::create_domain_polygon(
 ) |> st_as_sf()
 ```
 
-```{r error=FALSE,echo=FALSE,warning=FALSE}
+```{r, error=FALSE,echo=FALSE,warning=FALSE}
 date_df = create_dates_df(
   start_date = date_start,
   end_date   = date_end,
@@ -156,14 +156,14 @@ date_df = create_dates_df(
 )
 ```
 
-```{r error=FALSE,echo=FALSE,warning=FALSE}
+```{r, error=FALSE,echo=FALSE,warning=FALSE}
 dsm = get_gb_lidar(domain = local_domain, product = "dsm", product_type = "elevation")
 
 slope_r  = terra::terrain(dsm, v = "slope",  unit = "degrees", neighbors = 8)
 aspect_r = terra::terrain(dsm, v = "aspect", unit = "degrees", neighbors = 8)
 ```
 
-```{r error=FALSE,echo=FALSE,warning=FALSE}
+```{r, error=FALSE,echo=FALSE,warning=FALSE}
 # Raise DSM at elevated structure locations (surfaces with recorded height)
 if (any(!is.na(systemz$height))) {
   s_df = systemz[!is.na(systemz$height), ]
@@ -179,7 +179,7 @@ if (any(!is.na(systemz$height))) {
 }
 ```
 
-```{r error=FALSE,echo=FALSE,warning=FALSE}
+```{r, error=FALSE,echo=FALSE,warning=FALSE}
 shade = calc_shade(
   start_date  = date_start,
   end_date    = date_end,
@@ -190,7 +190,7 @@ shade = calc_shade(
 )
 ```
 
-```{r error=FALSE,echo=FALSE,warning=FALSE}
+```{r, error=FALSE,echo=FALSE,warning=FALSE}
 site_meteo = create_meteo_df(
   latitude   = lat,
   longitude  = lon,
@@ -202,7 +202,7 @@ site_meteo = create_meteo_df(
 
 ## Yield calculation
 
-```{r error=FALSE,echo=FALSE,warning=FALSE}
+```{r, error=FALSE,echo=FALSE,warning=FALSE}
 yield_list = list()
 for (s in systemz$name){
   
@@ -280,7 +280,7 @@ The chart below shows estimated annual kWh yield per roof surface (bank) for eac
 year in the study period. Surfaces 1 (main roof, 33 panels) and 6 (south-facing
 shed roof, 12 panels) are expected to dominate total generation.
 
-```{r error=FALSE,echo=FALSE,warning=FALSE, fig.cap="Annual yield (kWh) by roof surface and year"}
+```{r, error=FALSE,echo=FALSE,warning=FALSE, fig.cap="Annual yield (kWh) by roof surface and year"}
 library(ggplot2)
 library(lubridate)
 library(dplyr)
@@ -362,13 +362,13 @@ p_hour / p_month / p_annual +
 
 ### Total site yield
 
-```{r error=FALSE,echo=FALSE,warning=FALSE, fig.cap="Time variation of total site yield (kWh/day)"}
+```{r, error=FALSE,echo=FALSE,warning=FALSE, fig.cap="Time variation of total site yield (kWh/day)"}
 openair::timeVariation(all_b_plot, "kwh_total")
 ```
 
 ### Annual summary table
 
-```{r error=FALSE,echo=FALSE,warning=FALSE}
+```{r, error=FALSE,echo=FALSE,warning=FALSE}
 all_b_yr |>
   tidyr::pivot_wider(names_from = bank, values_from = kwh_bank,
                      names_prefix = "Surface ") |>
@@ -380,7 +380,7 @@ all_b_yr |>
 
 ### Whole-site annual totals
 
-```{r error=FALSE,echo=FALSE,warning=FALSE}
+```{r, error=FALSE,echo=FALSE,warning=FALSE}
 b_summed |>
   rename(Year = year, `Total yield (kWh)` = kwh_bank) |>
   kable(digits = 0, caption = "Total site yield by year") |>
