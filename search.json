@@ -37,22 +37,50 @@
   {
     "objectID": "index.html",
     "href": "index.html",
-    "title": "GBsolar",
+    "title": "Solar Potential Assessment — Bunbury",
     "section": "",
-    "text": "A spin-off of GB DEM to create a national solar map, GBsolar estimates rooftop photovoltaic yield for specific sites by combining:"
+    "text": "This report presents a rooftop solar potential assessment for the Bunbury site (53.114°N, −2.646°E), covering the period 2020-01-01 to 2025-12-31. Seven distinct roof surfaces have been identified and characterised.\nSolar irradiance estimates are derived from pre-processed ECMWF ERA5 reanalysis data, with shading calculated from Environment Agency LiDAR digital surface models. Where structures such as outbuildings or sheds sit above ground level, the DSM is adjusted upward to reflect their true rooftop height before shading is computed.\nThe roof surfaces have been numbered as follows:"
   },
   {
-    "objectID": "index.html#the-bunbury-site",
-    "href": "index.html#the-bunbury-site",
-    "title": "GBsolar",
-    "section": "The Bunbury site",
-    "text": "The Bunbury site\nSeven roof surfaces at Bunbury (53.114°N, −2.646°E) are assessed, totalling 63 panels. All the expensive inputs — the LiDAR DSM, terrain derivatives, monthly shading maps and the ERA5 time series — are precomputed once, so the interactive app recalculates yield for every surface in seconds when you change panel counts or orientation.\n\n\n\nSurfaces assessed\n7 (63 panels)\n\n\nTotal estimated yield\n~9,300 kWh/year (5-yr mean)\n\n\nShading\nLiDAR DSM, monthly shadow maps\n\n\nMeteorology\nERA5 single-levels + ERA5-Land"
+    "objectID": "index.html#overview",
+    "href": "index.html#overview",
+    "title": "Solar Potential Assessment — Bunbury",
+    "section": "",
+    "text": "This report presents a rooftop solar potential assessment for the Bunbury site (53.114°N, −2.646°E), covering the period 2020-01-01 to 2025-12-31. Seven distinct roof surfaces have been identified and characterised.\nSolar irradiance estimates are derived from pre-processed ECMWF ERA5 reanalysis data, with shading calculated from Environment Agency LiDAR digital surface models. Where structures such as outbuildings or sheds sit above ground level, the DSM is adjusted upward to reflect their true rooftop height before shading is computed.\nThe roof surfaces have been numbered as follows:"
   },
   {
-    "objectID": "index.html#explore",
-    "href": "index.html#explore",
-    "title": "GBsolar",
-    "section": "Explore",
-    "text": "Explore\n\nAnalysis — annual, monthly and diurnal yield per surface, computed from the precomputed cache.\nLive app — the interactive Shiny app hosted on shinyapps.io: change panel counts, height, aspect and slope per surface and re-run the model."
+    "objectID": "index.html#site-and-system-parameters",
+    "href": "index.html#site-and-system-parameters",
+    "title": "Solar Potential Assessment — Bunbury",
+    "section": "2 Site and system parameters",
+    "text": "2 Site and system parameters\nThe table below summarises the seven roof surfaces included in the analysis. Surfaces without a recorded aspect and slope have these values extracted directly from the LiDAR-derived terrain model at the centroid location. Panel counts reflect the estimated maximum capacity of each surface.\n\n\n\n\n\nSurface\nLatitude\nLongitude\nLength max (m)\nWidth max (m)\nPanels\nHeight above ground (m)\nAspect (°)\nSlope (°)\n\n\n\n\n1\n53.1137\n-2.6460\n11\n5.00\n33\nNA\nNA\nNA\n\n\n2\n53.1137\n-2.6459\n5\n4.71\n4\nNA\nNA\nNA\n\n\n3\n53.1137\n-2.6460\n0\n2.62\n2\nNA\nNA\nNA\n\n\n4\n53.1137\n-2.6459\n5\n4.71\n4\nNA\nNA\nNA\n\n\n5\n53.1137\n-2.6459\n0\n2.62\n2\nNA\n160\nNA\n\n\n6\n53.1137\n-2.6457\n6\n3.00\n12\n3\n333\n35\n\n\n7\n53.1137\n-2.6457\n6\n1.76\n6\n3\n153\n35\n\n\n\nNote: \n\n\n\n\n\n\n\n\n\n\n Aspect: degrees clockwise from north. NA = derived from LiDAR aspect raster."
+  },
+  {
+    "objectID": "index.html#method",
+    "href": "index.html#method",
+    "title": "Solar Potential Assessment — Bunbury",
+    "section": "3 Method",
+    "text": "3 Method\n\n3.1 Meteorological data\nHourly surface solar irradiance (global horizontal, direct normal, and diffuse horizontal components) is sourced from the ECMWF ERA5 reanalysis archive via the ecmwfr package. Data are downloaded for a 40 m buffer domain around the site centroid and aggregated to daily totals. ERA5 has a native spatial resolution of ~31 km; point-level estimates are extracted by bilinear interpolation to the site coordinates.\nPlane-of-array irradiance for each surface is computed from the horizontal components using the surface tilt and azimuth, accounting for direct beam projection, isotropic diffuse sky, and ground-reflected components. Where aspect and slope are not recorded in the system parameters, values are taken from the LiDAR-derived rasters described below.\n\n\n3.2 LiDAR digital surface model and shading\nA 1 m resolution Digital Surface Model (DSM) is retrieved from the Environment Agency National LiDAR Programme (via nexurbr::get_gb_lidar()), covering the local domain. The DSM represents the top surface of all features — buildings, vegetation, and ground — in metres above Ordnance Datum (OSGB36/EPSG:27700).\nSlope and aspect rasters are derived from the DSM using an 8-neighbour algorithm (terra::terrain()). Monthly shading fractions are then calculated using nexurbr::calc_shade(), which casts solar position vectors (sun azimuth and elevation at sub-hourly resolution) across the DSM to identify shadowed cells for each timestep.\n\n\n3.3 DSM adjustment for above-ground structures\nTwo roof surfaces (6 and 7) are located on structures with a recorded height above the surrounding ground plane (3 m). Where height values are provided in the system parameters, the DSM cell values at those locations are raised by the stated height before shading is computed. This ensures that the shading model correctly represents the elevated surface and that neighbouring obstructions are assessed relative to the true panel position rather than the ground.\nThe adjustment is applied to a 1 m buffer polygon around the centroid of each elevated surface, rasterised to the DSM grid.\n\n\n3.4 Yield calculation\nPanel-level yield (kWh/panel/day) is computed using nexurbr::calc_solar_potential_point(), combining plane-of-array irradiance with a standard system efficiency assumption. Bank-level yield is the product of per-panel yield and panel count. Results are aggregated to monthly and annual totals for reporting."
+  },
+  {
+    "objectID": "index.html#yield-calculation-1",
+    "href": "index.html#yield-calculation-1",
+    "title": "Solar Potential Assessment — Bunbury",
+    "section": "4 Yield calculation",
+    "text": "4 Yield calculation\n\n\n[1] \"slope derived from raster\"\n[1] \"aspect derived from raster\"\n[1] \"slope derived from raster\"\n[1] \"aspect derived from raster\"\n[1] \"slope derived from raster\"\n[1] \"aspect derived from raster\"\n[1] \"slope derived from raster\"\n[1] \"aspect derived from raster\"\n[1] \"slope derived from raster\"\n[1] \"aspect defined by user\"\n[1] \"slope defined by user\"\n[1] \"aspect defined by user\"\n[1] \"slope defined by user\"\n[1] \"aspect defined by user\""
+  },
+  {
+    "objectID": "index.html#results",
+    "href": "index.html#results",
+    "title": "Solar Potential Assessment — Bunbury",
+    "section": "5 Results",
+    "text": "5 Results\n\n5.1 Annual yield by roof surface\nThe chart below shows estimated annual kWh yield per roof surface (bank) for each year in the study period. Surfaces 1 (main roof, 33 panels) and 6 (south-facing shed roof, 12 panels) are expected to dominate total generation.\n\n\n\n\n\nAnnual yield (kWh) by roof surface and year\n\n\n\n\n\n\n5.2 Total site yield\n\n\n\n\n\nTime variation of total site yield (kWh/day)\n\n\n\n\n\n\n5.3 Annual summary table\n\n\n\nAnnual yield by surface (kWh)\n\n\nyear\naspect\nslope\nSurface 01\nSurface 02\nSurface 03\nSurface 04\nSurface 05\nSurface 06\nSurface 07\nTotal\n\n\n\n\n2020\n330\n59\n5452\nNA\nNA\nNA\nNA\nNA\nNA\n5452\n\n\n2021\n330\n59\n5661\nNA\nNA\nNA\nNA\nNA\nNA\n5661\n\n\n2022\n330\n59\n5646\nNA\nNA\nNA\nNA\nNA\nNA\n5646\n\n\n2023\n330\n59\n5596\nNA\nNA\nNA\nNA\nNA\nNA\n5596\n\n\n2024\n330\n59\n5381\nNA\nNA\nNA\nNA\nNA\nNA\n5381\n\n\n2025\n330\n59\n5748\nNA\nNA\nNA\nNA\nNA\nNA\n5748\n\n\n2020\n242\n32\nNA\n807\nNA\nNA\nNA\nNA\nNA\n807\n\n\n2021\n242\n32\nNA\n828\nNA\nNA\nNA\nNA\nNA\n828\n\n\n2022\n242\n32\nNA\n832\nNA\nNA\nNA\nNA\nNA\n832\n\n\n2023\n242\n32\nNA\n815\nNA\nNA\nNA\nNA\nNA\n815\n\n\n2024\n242\n32\nNA\n783\nNA\nNA\nNA\nNA\nNA\n783\n\n\n2025\n242\n32\nNA\n846\nNA\nNA\nNA\nNA\nNA\n846\n\n\n2020\n159\n35\nNA\nNA\n540\nNA\nNA\nNA\nNA\n540\n\n\n2021\n159\n35\nNA\nNA\n540\nNA\nNA\nNA\nNA\n540\n\n\n2022\n159\n35\nNA\nNA\n548\nNA\nNA\nNA\nNA\n548\n\n\n2023\n159\n35\nNA\nNA\n532\nNA\nNA\nNA\nNA\n532\n\n\n2024\n159\n35\nNA\nNA\n499\nNA\nNA\nNA\nNA\n499\n\n\n2025\n159\n35\nNA\nNA\n571\nNA\nNA\nNA\nNA\n571\n\n\n2020\n66\n33\nNA\nNA\nNA\n683\nNA\nNA\nNA\n683\n\n\n2021\n66\n33\nNA\nNA\nNA\n720\nNA\nNA\nNA\n720\n\n\n2022\n66\n33\nNA\nNA\nNA\n714\nNA\nNA\nNA\n714\n\n\n2023\n66\n33\nNA\nNA\nNA\n694\nNA\nNA\nNA\n694\n\n\n2024\n66\n33\nNA\nNA\nNA\n693\nNA\nNA\nNA\n693\n\n\n2025\n66\n33\nNA\nNA\nNA\n702\nNA\nNA\nNA\n702\n\n\n2020\n160\n71\nNA\nNA\nNA\nNA\n347\nNA\nNA\n347\n\n\n2021\n160\n71\nNA\nNA\nNA\nNA\n355\nNA\nNA\n355\n\n\n2022\n160\n71\nNA\nNA\nNA\nNA\n353\nNA\nNA\n353\n\n\n2023\n160\n71\nNA\nNA\nNA\nNA\n348\nNA\nNA\n348\n\n\n2024\n160\n71\nNA\nNA\nNA\nNA\n331\nNA\nNA\n331\n\n\n2025\n160\n71\nNA\nNA\nNA\nNA\n365\nNA\nNA\n365\n\n\n2020\n333\n35\nNA\nNA\nNA\nNA\nNA\n1893\nNA\n1893\n\n\n2021\n333\n35\nNA\nNA\nNA\nNA\nNA\n1993\nNA\n1993\n\n\n2022\n333\n35\nNA\nNA\nNA\nNA\nNA\n1983\nNA\n1983\n\n\n2023\n333\n35\nNA\nNA\nNA\nNA\nNA\n1944\nNA\n1944\n\n\n2024\n333\n35\nNA\nNA\nNA\nNA\nNA\n1933\nNA\n1933\n\n\n2025\n333\n35\nNA\nNA\nNA\nNA\nNA\n1945\nNA\n1945\n\n\n2020\n153\n35\nNA\nNA\nNA\nNA\nNA\nNA\n1414\n1414\n\n\n2021\n153\n35\nNA\nNA\nNA\nNA\nNA\nNA\n1415\n1415\n\n\n2022\n153\n35\nNA\nNA\nNA\nNA\nNA\nNA\n1429\n1429\n\n\n2023\n153\n35\nNA\nNA\nNA\nNA\nNA\nNA\n1385\n1385\n\n\n2024\n153\n35\nNA\nNA\nNA\nNA\nNA\nNA\n1312\n1312\n\n\n2025\n153\n35\nNA\nNA\nNA\nNA\nNA\nNA\n1486\n1486\n\n\n\n\n\n\n\n5.4 Whole-site annual totals\n\n\n\nTotal site yield by year\n\n\nYear\nTotal yield (kWh)\n\n\n\n\n2020\n11137\n\n\n2021\n11512\n\n\n2022\n11504\n\n\n2023\n11313\n\n\n2024\n10932\n\n\n2025\n11663"
+  },
+  {
+    "objectID": "index.html#discussion",
+    "href": "index.html#discussion",
+    "title": "Solar Potential Assessment — Bunbury",
+    "section": "6 Discussion",
+    "text": "6 Discussion\nThe analysis draws on six years of ERA5 meteorological data (2020–2025), providing a representative picture of inter-annual variability driven by cloud cover and solar geometry at this latitude (~53°N). Yield estimates are sensitive to assumed panel efficiency and inverter losses, which use standard defaults in this version of the model; site-specific values can be substituted in https://blaisekelly.github.io/GBsolar/app.html.\nShading from neighbouring vegetation and structures is captured in the LiDAR DSM but is subject to the resolution of the 1 m dataset and the date of the survey flight. Seasonal variation in deciduous canopy is not accounted for, which may lead to a modest underestimate of summer yield for surfaces adjacent to trees.\nThe DSM elevation adjustment for surfaces 6 and 7 (shed roof, +3 m) has a material effect on shading calculations for those surfaces; without it, the model would underestimate exposure by treating panels as if at ground level. ```"
   }
 ]
