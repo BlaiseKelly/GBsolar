@@ -1,10 +1,31 @@
 [
   {
-    "objectID": "app.html",
-    "href": "app.html",
-    "title": "Live app",
+    "objectID": "analysis.html",
+    "href": "analysis.html",
+    "title": "Analysis",
     "section": "",
-    "text": "The interactive app is hosted on shinyapps.io. It loads the precomputed DSM, shading map and ERA5 meteorology from its bundled cache, so pressing Run calculation recomputes yield for all seven surfaces in seconds.\nChange the panel count, mounting height, aspect or slope for any surface and re-run to see the effect on annual, monthly and diurnal yield. Note that changing a height requires re-simulating the shading map, which is slower.\n\n\n\n\n\n\nIf the embedded frame does not load, open the app directly."
+    "text": "annual &lt;- all_banks |&gt;\n  mutate(year = year(date)) |&gt;\n  group_by(bank, year) |&gt;\n  summarise(kwh = round(sum(kwh_bank, na.rm = TRUE)), .groups = \"drop\") |&gt;\n  tidyr::pivot_wider(names_from = year, values_from = kwh) |&gt;\n  mutate(Mean = round(rowMeans(across(where(is.numeric)), na.rm = TRUE)))\n\nknitr::kable(annual, col.names = c(\"Surface\", names(annual)[-1]))\n\n\n\n\nSurface\n2021\n2022\n2023\n2024\n2025\nMean\n\n\n\n\n01\n5674\n5662\n5614\n5397\n5765\n5622\n\n\n02\n829\n834\n817\n784\n848\n822\n\n\n03\n542\n550\n534\n500\n573\n540\n\n\n04\n719\n712\n694\n692\n700\n703\n\n\n05\n355\n354\n349\n331\n366\n351\n\n\n06\n1993\n1983\n1944\n1933\n1944\n1959\n\n\n07\n1414\n1426\n1383\n1310\n1483\n1403\n\n\n\n\n\nTotal estimated yield averages 11,401 kWh/year across all surfaces.\n\n\nshade = rast(\"sites/Bunbury/app_cache/shade.tif\")\n\ndsm = rast(\"sites/Bunbury/SUR/dsm.TIF\")\n\nplot(dsm[[1]])"
+  },
+  {
+    "objectID": "analysis.html#annual-yield-by-surface",
+    "href": "analysis.html#annual-yield-by-surface",
+    "title": "Analysis",
+    "section": "",
+    "text": "annual &lt;- all_banks |&gt;\n  mutate(year = year(date)) |&gt;\n  group_by(bank, year) |&gt;\n  summarise(kwh = round(sum(kwh_bank, na.rm = TRUE)), .groups = \"drop\") |&gt;\n  tidyr::pivot_wider(names_from = year, values_from = kwh) |&gt;\n  mutate(Mean = round(rowMeans(across(where(is.numeric)), na.rm = TRUE)))\n\nknitr::kable(annual, col.names = c(\"Surface\", names(annual)[-1]))\n\n\n\n\nSurface\n2021\n2022\n2023\n2024\n2025\nMean\n\n\n\n\n01\n5674\n5662\n5614\n5397\n5765\n5622\n\n\n02\n829\n834\n817\n784\n848\n822\n\n\n03\n542\n550\n534\n500\n573\n540\n\n\n04\n719\n712\n694\n692\n700\n703\n\n\n05\n355\n354\n349\n331\n366\n351\n\n\n06\n1993\n1983\n1944\n1933\n1944\n1959\n\n\n07\n1414\n1426\n1383\n1310\n1483\n1403\n\n\n\n\n\nTotal estimated yield averages 11,401 kWh/year across all surfaces.\n\n\nshade = rast(\"sites/Bunbury/app_cache/shade.tif\")\n\ndsm = rast(\"sites/Bunbury/SUR/dsm.TIF\")\n\nplot(dsm[[1]])"
+  },
+  {
+    "objectID": "analysis.html#yield-profiles",
+    "href": "analysis.html#yield-profiles",
+    "title": "Analysis",
+    "section": "Yield profiles",
+    "text": "Yield profiles\n\nPAL &lt;- c(\"#f97316\",\"#3b82f6\",\"#10b981\",\"#a855f7\",\"#ec4899\",\"#eab308\",\"#06b6d4\")\n\np_hour &lt;- all_banks |&gt;\n  mutate(hour = hour(date)) |&gt;\n  group_by(hour, bank) |&gt;\n  summarise(kwh = mean(kwh_bank, na.rm = TRUE), .groups = \"drop\") |&gt;\n  ggplot(aes(hour, kwh, colour = bank)) +\n  geom_line(linewidth = 0.9) +\n  geom_point(size = 1.4) +\n  scale_colour_manual(values = PAL, name = \"Surface\") +\n  scale_x_continuous(breaks = seq(0, 23, 3)) +\n  labs(title = \"Mean diurnal profile\", x = \"Hour of day\", y = \"kWh/hr\")\n\np_month &lt;- all_banks |&gt;\n  mutate(month = floor_date(date, \"month\")) |&gt;\n  group_by(month, bank) |&gt;\n  summarise(kwh = sum(kwh_bank, na.rm = TRUE), .groups = \"drop\") |&gt;\n  ggplot(aes(month, kwh, fill = bank)) +\n  geom_col(width = 25 * 24 * 3600) +\n  scale_fill_manual(values = PAL, name = \"Surface\") +\n  labs(title = \"Monthly yield by surface\", x = NULL, y = \"kWh\") +\n  theme(axis.text.x = element_text(angle = 30, hjust = 1))\n\np_annual &lt;- all_banks |&gt;\n  mutate(year = year(date)) |&gt;\n  group_by(year, bank) |&gt;\n  summarise(kwh = sum(kwh_bank, na.rm = TRUE), .groups = \"drop\") |&gt;\n  ggplot(aes(factor(year), kwh, fill = bank)) +\n  geom_col(position = \"dodge\") +\n  scale_fill_manual(values = PAL, name = \"Surface\") +\n  labs(title = \"Annual yield by surface\", x = NULL, y = \"kWh\")\n\np_hour / p_month / p_annual"
+  },
+  {
+    "objectID": "analysis.html#method",
+    "href": "analysis.html#method",
+    "title": "Analysis",
+    "section": "Method",
+    "text": "Method\nDirect radiation is attenuated by the LiDAR-derived shading fraction per month and hour, then combined with isotropic diffuse and ground-reflected radiation on the tilted plane. Cell temperature derating follows the NOCT model; panel area and efficiency defaults are 1.6 m² and 15.3%. Surfaces without a user-specified aspect or slope take their values from the DSM terrain derivatives at the surface point."
   },
   {
     "objectID": "index.html",
@@ -26,33 +47,5 @@
     "title": "GBsolar",
     "section": "Explore",
     "text": "Explore\n\nAnalysis — annual, monthly and diurnal yield per surface, computed from the precomputed cache.\nLive app — the interactive Shiny app hosted on shinyapps.io: change panel counts, height, aspect and slope per surface and re-run the model."
-  },
-  {
-    "objectID": "analysis.html",
-    "href": "analysis.html",
-    "title": "Analysis",
-    "section": "",
-    "text": "annual &lt;- all_banks |&gt;\n  mutate(year = year(date)) |&gt;\n  group_by(bank, year) |&gt;\n  summarise(kwh = round(sum(kwh_bank, na.rm = TRUE)), .groups = \"drop\") |&gt;\n  tidyr::pivot_wider(names_from = year, values_from = kwh) |&gt;\n  mutate(Mean = round(rowMeans(across(where(is.numeric)), na.rm = TRUE)))\n\nknitr::kable(annual, col.names = c(\"Surface\", names(annual)[-1]))\n\n\n\n\nSurface\n2021\n2022\n2023\n2024\n2025\nMean\n\n\n\n\n01\n5674\n5662\n5614\n5397\n5765\n5622\n\n\n02\n829\n834\n817\n784\n848\n822\n\n\n03\n542\n550\n534\n500\n573\n540\n\n\n04\n719\n712\n694\n692\n700\n703\n\n\n05\n355\n354\n349\n331\n366\n351\n\n\n06\n1993\n1983\n1944\n1933\n1944\n1959\n\n\n07\n1414\n1426\n1383\n1310\n1483\n1403\n\n\n\n\n\nTotal estimated yield averages 11,401 kWh/year across all surfaces.\n\n\nshade = rast(\"sites/Bunbury/app_cache/shade.tif\")\n\ndsm = rast(\"sites/Bunbury/SUR/dsm.TIF\")\n\nplot(shade[[50]])"
-  },
-  {
-    "objectID": "analysis.html#annual-yield-by-surface",
-    "href": "analysis.html#annual-yield-by-surface",
-    "title": "Analysis",
-    "section": "",
-    "text": "annual &lt;- all_banks |&gt;\n  mutate(year = year(date)) |&gt;\n  group_by(bank, year) |&gt;\n  summarise(kwh = round(sum(kwh_bank, na.rm = TRUE)), .groups = \"drop\") |&gt;\n  tidyr::pivot_wider(names_from = year, values_from = kwh) |&gt;\n  mutate(Mean = round(rowMeans(across(where(is.numeric)), na.rm = TRUE)))\n\nknitr::kable(annual, col.names = c(\"Surface\", names(annual)[-1]))\n\n\n\n\nSurface\n2021\n2022\n2023\n2024\n2025\nMean\n\n\n\n\n01\n5674\n5662\n5614\n5397\n5765\n5622\n\n\n02\n829\n834\n817\n784\n848\n822\n\n\n03\n542\n550\n534\n500\n573\n540\n\n\n04\n719\n712\n694\n692\n700\n703\n\n\n05\n355\n354\n349\n331\n366\n351\n\n\n06\n1993\n1983\n1944\n1933\n1944\n1959\n\n\n07\n1414\n1426\n1383\n1310\n1483\n1403\n\n\n\n\n\nTotal estimated yield averages 11,401 kWh/year across all surfaces.\n\n\nshade = rast(\"sites/Bunbury/app_cache/shade.tif\")\n\ndsm = rast(\"sites/Bunbury/SUR/dsm.TIF\")\n\nplot(shade[[50]])"
-  },
-  {
-    "objectID": "analysis.html#yield-profiles",
-    "href": "analysis.html#yield-profiles",
-    "title": "Analysis",
-    "section": "Yield profiles",
-    "text": "Yield profiles\n\nPAL &lt;- c(\"#f97316\",\"#3b82f6\",\"#10b981\",\"#a855f7\",\"#ec4899\",\"#eab308\",\"#06b6d4\")\n\np_hour &lt;- all_banks |&gt;\n  mutate(hour = hour(date)) |&gt;\n  group_by(hour, bank) |&gt;\n  summarise(kwh = mean(kwh_bank, na.rm = TRUE), .groups = \"drop\") |&gt;\n  ggplot(aes(hour, kwh, colour = bank)) +\n  geom_line(linewidth = 0.9) +\n  geom_point(size = 1.4) +\n  scale_colour_manual(values = PAL, name = \"Surface\") +\n  scale_x_continuous(breaks = seq(0, 23, 3)) +\n  labs(title = \"Mean diurnal profile\", x = \"Hour of day\", y = \"kWh/hr\")\n\np_month &lt;- all_banks |&gt;\n  mutate(month = floor_date(date, \"month\")) |&gt;\n  group_by(month, bank) |&gt;\n  summarise(kwh = sum(kwh_bank, na.rm = TRUE), .groups = \"drop\") |&gt;\n  ggplot(aes(month, kwh, fill = bank)) +\n  geom_col(width = 25 * 24 * 3600) +\n  scale_fill_manual(values = PAL, name = \"Surface\") +\n  labs(title = \"Monthly yield by surface\", x = NULL, y = \"kWh\") +\n  theme(axis.text.x = element_text(angle = 30, hjust = 1))\n\np_annual &lt;- all_banks |&gt;\n  mutate(year = year(date)) |&gt;\n  group_by(year, bank) |&gt;\n  summarise(kwh = sum(kwh_bank, na.rm = TRUE), .groups = \"drop\") |&gt;\n  ggplot(aes(factor(year), kwh, fill = bank)) +\n  geom_col(position = \"dodge\") +\n  scale_fill_manual(values = PAL, name = \"Surface\") +\n  labs(title = \"Annual yield by surface\", x = NULL, y = \"kWh\")\n\np_hour / p_month / p_annual"
-  },
-  {
-    "objectID": "analysis.html#method",
-    "href": "analysis.html#method",
-    "title": "Analysis",
-    "section": "Method",
-    "text": "Method\nDirect radiation is attenuated by the LiDAR-derived shading fraction per month and hour, then combined with isotropic diffuse and ground-reflected radiation on the tilted plane. Cell temperature derating follows the NOCT model; panel area and efficiency defaults are 1.6 m² and 15.3%. Surfaces without a user-specified aspect or slope take their values from the DSM terrain derivatives at the surface point."
   }
 ]
