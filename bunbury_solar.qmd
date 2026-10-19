@@ -1,0 +1,406 @@
+---
+title: "Solar Potential Assessment — Bunbury"
+subtitle: "Rooftop PV yield modelling using ERA5 meteorological data and LiDAR-derived shading"
+date: "`r Sys.Date()`"
+format:
+  html:
+    theme: yeti
+    toc: true
+    toc-depth: 3
+    toc-title: "Contents"
+    number-sections: true
+    fig-width: 9
+    fig-height: 5
+    embed-resources: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(ecmwfr)
+library(dplyr)
+library(sf)
+library(knitr)
+library(kableExtra)
+
+devtools::load_all("../nexurbr")
+
+source("R/calc.R")
+source("R/create_dates.R")
+source("R/create_df_from_nc.R")
+source("R/get.R")
+source("R/create.R")
+
+site     = "Bunbury"
+lat      = 53.113712
+lon      = -2.645941
+date_start = "2020-01-01"
+date_end   = "2025-12-31"
+
+systemz = read.csv(text = '
+"name", "lat","lon","length_max","width_max","length_min","width_min","n_panels","height","aspect","slope",
+1,53.113732, -2.645957,11,5,11,5,33,NA,NA,NA
+2,53.113678, -2.645939,5,4.71,5,1.68,4,NA,NA,NA
+3,53.113685, -2.645989,0,2.62,5.9,1.2,2,NA,NA,NA
+4,53.113691, -2.645895,5,4.71,5,1.68,4,NA,NA,NA
+5,53.113716, -2.645876,0,2.62,5.9,1.2,2,NA,160,NA
+6,53.113749, -2.645685,6,3,6,3,12,3,333,35
+7,53.113729, -2.645675,6,1.76,1.7,6,6,3,153,35
+', fill = TRUE)
+```
+
+## Overview
+
+This report presents a rooftop solar potential assessment for the **Bunbury** site
+(53.114°N, −2.646°E), covering the period `r date_start` to `r date_end`. Seven
+distinct roof surfaces have been identified and characterised.
+
+Solar irradiance estimates are derived from pre-processed ECMWF ERA5 reanalysis data, with shading
+calculated from Environment Agency LiDAR digital surface models. Where structures
+such as outbuildings or sheds sit above ground level, the DSM is adjusted upward to
+reflect their true rooftop height before shading is computed.
+
+## Site and system parameters
+
+The table below summarises the seven roof surfaces included in the analysis. Surfaces
+without a recorded aspect and slope have these values extracted directly from the
+LiDAR-derived terrain model at the centroid location. Panel counts reflect the
+estimated maximum capacity of each surface.
+
+```{r error=FALSE,echo=FALSE,warning=FALSE}
+systemz |>
+  select(
+    `Surface` = name,
+    `Latitude` = lat,
+    `Longitude` = lon,
+    `Length max (m)` = length_max,
+    `Width max (m)` = width_max,
+    `Panels` = n_panels,
+    `Height above ground (m)` = height,
+    `Aspect (°)` = aspect,
+    `Slope (°)` = slope
+  ) |>
+  kable(digits = 4, align = "c") |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE) |>
+  footnote(general = "Aspect: degrees clockwise from north. NA = derived from LiDAR aspect raster.")
+```
+
+## Method
+
+### Meteorological data
+
+Hourly surface solar irradiance (global horizontal, direct normal, and diffuse
+horizontal components) is sourced from the **ECMWF ERA5** reanalysis archive via the
+`ecmwfr` package. Data are downloaded for a 40 m buffer domain around the site
+centroid and aggregated to daily totals. ERA5 has a native spatial resolution of
+~31 km; point-level estimates are extracted by bilinear interpolation to the site
+coordinates.
+
+Plane-of-array irradiance for each surface is computed from the horizontal components
+using the surface tilt and azimuth, accounting for direct beam projection, isotropic
+diffuse sky, and ground-reflected components. Where aspect and slope are not
+recorded in the system parameters, values are taken from the LiDAR-derived rasters
+described below.
+
+### LiDAR digital surface model and shading
+
+A 1 m resolution Digital Surface Model (DSM) is retrieved from the **Environment
+Agency National LiDAR Programme** (via `nexurbr::get_gb_lidar()`), covering the
+local domain. The DSM represents the top surface of all features — buildings,
+vegetation, and ground — in metres above Ordnance Datum (OSGB36/EPSG:27700).
+
+Slope and aspect rasters are derived from the DSM using an 8-neighbour algorithm
+(`terra::terrain()`). Monthly shading fractions are then calculated using
+`nexurbr::calc_shade()`, which casts solar position vectors (sun azimuth and
+elevation at sub-hourly resolution) across the DSM to identify shadowed cells for
+each timestep.
+
+### DSM adjustment for above-ground structures
+
+Two roof surfaces (6 and 7) are located on structures with a recorded height above
+the surrounding ground plane (3 m). Where height values are provided in the system
+parameters, the DSM cell values at those locations are raised by the stated height
+before shading is computed. This ensures that the shading model correctly represents
+the elevated surface and that neighbouring obstructions are assessed relative to the
+true panel position rather than the ground.
+
+The adjustment is applied to a 1 m buffer polygon around the centroid of each
+elevated surface, rasterised to the DSM grid.
+
+### Yield calculation
+
+Panel-level yield (kWh/panel/day) is computed using `nexurbr::calc_solar_potential_point()`,
+combining plane-of-array irradiance with a standard system efficiency assumption.
+Bank-level yield is the product of per-panel yield and panel count. Results are
+aggregated to monthly and annual totals for reporting.
+
+## Data preparation
+
+```{r error=FALSE,echo=FALSE,warning=FALSE}
+local_domain = nexurbr::create_domain_polygon(
+  latitude  = lat,
+  longitude = lon,
+  buffer_dist = 40
+) |> st_as_sf()
+```
+
+```{r error=FALSE,echo=FALSE,warning=FALSE}
+date_df = create_dates_df(
+  start_date = date_start,
+  end_date   = date_end,
+  time_zone  = "UTC",
+  timestep   = "day"
+)
+```
+
+```{r error=FALSE,echo=FALSE,warning=FALSE}
+dsm = get_gb_lidar(domain = local_domain, product = "dsm", product_type = "elevation")
+
+slope_r  = terra::terrain(dsm, v = "slope",  unit = "degrees", neighbors = 8)
+aspect_r = terra::terrain(dsm, v = "aspect", unit = "degrees", neighbors = 8)
+```
+
+```{r error=FALSE,echo=FALSE,warning=FALSE}
+# Raise DSM at elevated structure locations (surfaces with recorded height)
+if (any(!is.na(systemz$height))) {
+  s_df = systemz[!is.na(systemz$height), ]
+  pts  = st_as_sf(s_df, coords = c("lon", "lat"), crs = 4326)
+
+  panel_loc = pts |>
+    sf::st_transform(terra::crs(dsm)) |>
+    sf::st_buffer(1)
+
+  panel_cells  = terra::rasterize(terra::vect(panel_loc), dsm)
+  panel_height = s_df$height
+  dsm[!is.na(panel_cells)] = dsm[!is.na(panel_cells)] + panel_height
+}
+```
+
+```{r error=FALSE,echo=FALSE,warning=FALSE}
+shade = calc_shade(
+  start_date  = date_start,
+  end_date    = date_end,
+  dsm,
+  detail      = "monthly",
+  omit_nights = TRUE,
+  can_grnd    = "canopy"
+)
+```
+
+```{r error=FALSE,echo=FALSE,warning=FALSE}
+site_meteo = create_meteo_df(
+  latitude   = lat,
+  longitude  = lon,
+  site_name  = site,
+  start_date = date_start,
+  end_date   = date_end
+)
+```
+
+## Yield calculation
+
+```{r error=FALSE,echo=FALSE,warning=FALSE}
+yield_list = list()
+for (s in systemz$name){
+  
+  sys_df = filter(systemz, name == s)
+  
+  aspect_raster = is.na(sys_df$aspect)
+  slope_raster = is.na(sys_df$slope)
+  
+  if(aspect_raster){
+    aspect_in = aspect_r
+  } else {
+    aspect_in = sys_df$aspect
+  }
+  
+  if(slope_raster){
+    slope_in = slope_r
+  } else {
+    slope_in = sys_df$slope
+  }
+
+  
+tot_solar = calc_solar_potential_point(meteo_dat = site_meteo,
+                                       latitude = sys_df$lat,
+                                       longitude = sys_df$lon,
+                                       aspect = aspect_in,
+                                       slope = slope_in,
+                                       use_shading = TRUE,
+                                       shade_rast = shade
+                                       )
+
+tot_solar$kwh_bank = tot_solar$yield_kwh_panel*sys_df$n_panels
+tot_solar$bank = sprintf("%02d", sys_df$name)
+
+yield_list[[s]] = tot_solar
+
+}
+
+all_banks = do.call(rbind,yield_list)
+
+all_b_yr = all_banks |>
+  mutate(year = lubridate::year(date)) |>
+  group_by(bank, year) |>
+  summarise(
+    kwh_bank = sum(kwh_bank, na.rm = TRUE),
+    aspect   = mean(aspect_value),
+    slope    = mean(slope_value),
+    .groups  = "drop"
+  )
+
+all_b_mnth = all_banks |>
+  mutate(month = lubridate::month(date)) |>
+  group_by(month) |>
+  summarise(
+    kwh_bank = sum(kwh_bank, na.rm = TRUE),
+    aspect   = mean(aspect_value),
+    slope    = mean(slope_value),
+    .groups  = "drop"
+  )
+
+b_summed = all_banks |>
+  mutate(year = lubridate::year(date)) |>
+  group_by(year) |>
+  summarise(kwh_bank = sum(kwh_bank, na.rm = TRUE), .groups = "drop")
+
+all_b_plot = all_banks |>
+  group_by(date) |>
+  summarise(kwh_total = sum(kwh_bank), .groups = "drop")
+```
+
+## Results
+
+### Annual yield by roof surface
+
+The chart below shows estimated annual kWh yield per roof surface (bank) for each
+year in the study period. Surfaces 1 (main roof, 33 panels) and 6 (south-facing
+shed roof, 12 panels) are expected to dominate total generation.
+
+```{r error=FALSE,echo=FALSE,warning=FALSE, fig.cap="Annual yield (kWh) by roof surface and year"}
+library(ggplot2)
+library(lubridate)
+library(dplyr)
+library(patchwork)
+
+theme_solar = function() {
+  theme_minimal(base_family = "IBM Plex Sans") +
+    theme(
+      plot.background    = element_rect(fill = "#0f1117", colour = NA),
+      panel.background   = element_rect(fill = "#0f1117", colour = NA),
+      panel.grid.major   = element_line(colour = "#1e2130"),
+      panel.grid.minor   = element_blank(),
+      text               = element_text(colour = "#c9d1d9"),
+      axis.text          = element_text(colour = "#8b949e"),
+      axis.title         = element_text(colour = "#c9d1d9", size = 9),
+      strip.text         = element_text(colour = "#c9d1d9", face = "bold"),
+      legend.background  = element_rect(fill = "#0f1117", colour = NA),
+      legend.key         = element_rect(fill = "#0f1117", colour = NA),
+      plot.title         = element_text(colour = "#e6edf3", face = "bold", size = 12),
+      plot.subtitle      = element_text(colour = "#8b949e", size = 9),
+      plot.margin        = margin(12, 12, 12, 12)
+    )
+}
+
+pal = c("#f97316","#3b82f6","#10b981","#a855f7","#ec4899","#eab308","#06b6d4")
+
+# 1. Mean diurnal profile (averaging IS correct here — shape of the day)
+p_hour = all_banks |>
+  mutate(hour = hour(date)) |>
+  group_by(hour, bank) |>
+  summarise(kwh = mean(kwh_bank), .groups = "drop") |>
+  ggplot(aes(hour, kwh, colour = bank)) +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 1.2) +
+  scale_colour_manual(values = pal) +
+  scale_x_continuous(breaks = seq(0, 23, 3)) +
+  labs(title = "Mean diurnal profile", x = "Hour of day", y = "kWh", colour = "Surface") +
+  theme_solar()
+
+# 2. Monthly totals (sum is correct)
+p_month = all_banks |>
+  mutate(month = floor_date(date, "month")) |>
+  group_by(month, bank) |>
+  summarise(kwh = sum(kwh_bank), .groups = "drop") |>
+  ggplot(aes(month, kwh, fill = bank)) +
+  geom_col(width = 25 * 24 * 3600) +  # 25 days in seconds
+  scale_fill_manual(values = pal) +
+  labs(title = "Monthly yield by surface", x = NULL, y = "kWh", fill = "Surface") +
+  theme_solar() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+# 3. Annual totals (sum)
+p_annual = all_banks |>
+  mutate(year = year(date)) |>
+  group_by(year, bank) |>
+  summarise(kwh = sum(kwh_bank), .groups = "drop") |>
+  ggplot(aes(factor(year), kwh, fill = bank)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = pal) +
+  labs(title = "Annual yield by surface", x = NULL, y = "kWh", fill = "Surface") +
+  theme_solar()
+
+# Combine
+p_hour / p_month / p_annual +
+  plot_annotation(
+    title    = "Solar yield — Bunbury",
+    subtitle = "ERA5 irradiance · LiDAR shading · 2020–2025",
+    theme    = theme(
+      plot.background = element_rect(fill = "#0f1117", colour = NA),
+      plot.title      = element_text(colour = "#e6edf3", face = "bold",
+                                     size = 14, family = "IBM Plex Sans"),
+      plot.subtitle   = element_text(colour = "#8b949e", size = 9,
+                                     family = "IBM Plex Sans")
+    )
+  )
+
+
+```
+
+### Total site yield
+
+```{r error=FALSE,echo=FALSE,warning=FALSE, fig.cap="Time variation of total site yield (kWh/day)"}
+openair::timeVariation(all_b_plot, "kwh_total")
+```
+
+### Annual summary table
+
+```{r error=FALSE,echo=FALSE,warning=FALSE}
+all_b_yr |>
+  tidyr::pivot_wider(names_from = bank, values_from = kwh_bank,
+                     names_prefix = "Surface ") |>
+  mutate(Total = rowSums(across(starts_with("Surface ")), na.rm = TRUE)) |>
+  kable(digits = 0, caption = "Annual yield by surface (kWh)") |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+```
+
+### Whole-site annual totals
+
+```{r error=FALSE,echo=FALSE,warning=FALSE}
+b_summed |>
+  rename(Year = year, `Total yield (kWh)` = kwh_bank) |>
+  kable(digits = 0, caption = "Total site yield by year") |>
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+## Discussion
+
+The analysis draws on six years of ERA5 meteorological data (2020–2025), providing
+a representative picture of inter-annual variability driven by cloud cover and
+solar geometry at this latitude (~53°N). Yield estimates are sensitive to assumed
+panel efficiency and inverter losses, which use standard defaults in this version
+of the model; site-specific values can be substituted as they become available.
+
+Shading from neighbouring vegetation and structures is captured in the LiDAR DSM
+but is subject to the resolution of the 1 m dataset and the date of the survey
+flight. Seasonal variation in deciduous canopy is not accounted for, which may
+lead to a modest underestimate of summer yield for surfaces adjacent to trees.
+
+The DSM elevation adjustment for surfaces 6 and 7 (shed roof, +3 m) has a material
+effect on shading calculations for those surfaces; without it, the model would
+underestimate exposure by treating panels as if at ground level.
+```

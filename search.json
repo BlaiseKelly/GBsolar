@@ -1,5 +1,12 @@
 [
   {
+    "objectID": "validation.html",
+    "href": "validation.html",
+    "title": "Model validation",
+    "section": "",
+    "text": "A site (Winsley,Wiltshire) with measured generation data using the same model (obs_kwh) and this model (modelled_kwh_shade)."
+  },
+  {
     "objectID": "analysis.html",
     "href": "analysis.html",
     "title": "Analysis",
